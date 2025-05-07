@@ -72,30 +72,31 @@ class _DDExpandOperation(_DDOperation):
             raise DDException(f"Failed to expand: {str(e)}", current_path, value)
 
 
-class _DDProxy:
-    """代理类，用于构建链式操作"""
+class dd:
+    """数据访问主类，用于初始化一个数据导航操作"""
 
-    def __init__(self, dd_instance, operations=None, null_safe=False):
-        self._dd_instance = dd_instance
+    def __init__(self, value: Any, operations=None, null_safe=False):
+        self._value = value
         self._operations = operations or []
         self._null_safe = null_safe
 
-    def __getattr__(self, attr: str) -> "_DDProxy":
+    def __getattr__(self, attr: str):
         if attr == "_":
-            # 设置所有后续操作为null_safe
-            return _DDProxy(self._dd_instance, self._operations, True)
+            # 返回一个新的dd实例，使用相同的值和操作，但启用null_safe
+            return dd(self._value, self._operations, True)
+        # 返回一个新的dd实例，添加属性操作
+        return dd(self._value, self._operations + [_DDAttributeOperation(attr)], self._null_safe)
 
-        # 使用当前的null_safe状态创建新的代理
-        return _DDProxy(self._dd_instance, self._operations + [_DDAttributeOperation(attr)], self._null_safe)
-
-    def __getitem__(self, key: Any) -> "_DDProxy":
+    def __getitem__(self, key: Any):
         if key is Ellipsis:  # 处理 [...]
-            return _DDProxy(self._dd_instance, self._operations + [_DDExpandOperation()], self._null_safe)
-        return _DDProxy(self._dd_instance, self._operations + [_DDItemOperation(key)], self._null_safe)
+            # 返回一个新的dd实例，添加展开操作
+            return dd(self._value, self._operations + [_DDExpandOperation()], self._null_safe)
+        # 返回一个新的dd实例，添加索引操作
+        return dd(self._value, self._operations + [_DDItemOperation(key)], self._null_safe)
 
     def __call__(self, convert: Optional[Callable[[Any], _T]] = None) -> Any:
         """执行所有操作并获取最终结果"""
-        result = self._dd_instance._value
+        result = self._value
         path = ["dd"]
 
         for op in self._operations:
@@ -113,6 +114,7 @@ class _DDProxy:
                     raise
                 raise DDException(f"Unexpected error: {str(e)}", path, result)
 
+        # 即使convert为None也应该到达这里，保持所有操作的应用
         if convert is not None:
             try:
                 return convert(result)
@@ -122,32 +124,3 @@ class _DDProxy:
                 raise DDException(f"Conversion error: {str(e)}", path, result)
 
         return result
-
-
-class dd:
-    def __init__(self, value: Any):
-        self._value = value
-
-    def __getattr__(self, attr: str) -> _DDProxy:
-        if attr == "_":
-            return _DDProxy(self, null_safe=True)
-        return _DDProxy(self, [_DDAttributeOperation(attr)])
-
-    def __getitem__(self, key: Any) -> _DDProxy:
-        if key is Ellipsis:  # 处理 [...]
-            return _DDProxy(self, [_DDExpandOperation()])
-        return _DDProxy(self, [_DDItemOperation(key)])
-
-    def __call__(self, convert: Optional[Callable[[Any], _T]] = None) -> _T:
-        if convert is None:
-            return self._value
-        try:
-            return convert(self._value)
-        except Exception as e:
-            raise DDException("Conversion error in base dd", ["dd"], self._value)
-
-    def __str__(self) -> str:
-        return str(self._value)
-
-    def __repr__(self) -> str:
-        return repr(self._value)
