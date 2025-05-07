@@ -2,6 +2,8 @@
 
 ![WIP](https://img.shields.io/badge/Status-WIP-yellow)
 
+[中文文档](README-zh.md) | English
+
 DataDot (DD) is a Python library designed to simplify data access. It provides a chain-style calling method to safely access nested data structures without cumbersome null checks.
 
 ## Key Features
@@ -24,7 +26,7 @@ data = {
 }
 
 # Using DD to access data
-from src.dd import dd
+from dd import dd
 
 # Get the email of the first user
 email = dd(data).users[0].details.email()
@@ -58,7 +60,7 @@ pip install datadot
 ### 🔰 Basic Usage
 
 ```python
-from src.dd import dd
+from dd import dd
 
 # Simple data access
 data = {"users": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]}
@@ -143,7 +145,7 @@ upper_names = dd(data).users[...].name(lambda names: [n.upper() for n in names])
 
 ```python
 import requests
-from src.dd import dd
+from dd import dd
 
 # Safely navigate through API response with a single ._ for the entire chain
 response = requests.get("https://api.example.com/data").json()

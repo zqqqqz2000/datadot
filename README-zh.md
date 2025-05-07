@@ -2,6 +2,8 @@
 
 ![开发中](https://img.shields.io/badge/状态-开发中-yellow)
 
+中文 | [English](README.md)
+
 DataDot (DD) 是一个用于简化数据访问的Python库。它提供了一种链式调用方式来安全地访问嵌套的数据结构，无需繁琐的空值检查。
 
 ## 主要特性
@@ -24,7 +26,7 @@ data = {
 }
 
 # 使用DD访问数据
-from src.dd import dd
+from dd import dd
 
 # 获取第一个用户的邮箱
 email = dd(data).users[0].details.email()
@@ -58,7 +60,7 @@ pip install datadot
 ### 🔰 基本用法
 
 ```python
-from src.dd import dd
+from dd import dd
 
 # 简单的数据访问
 data = {"users": [{"name": "小明", "age": 30}, {"name": "小红", "age": 25}]}
@@ -143,7 +145,7 @@ upper_names = dd(data).users[...].name(lambda names: [n.upper() for n in names])
 
 ```python
 import requests
-from src.dd import dd
+from dd import dd
 
 # 使用单个 ._ 安全地导航API响应，适用于整个链
 response = requests.get("https://api.example.com/data").json()
@@ -156,4 +158,3 @@ all_prices = dd(response)._.data.items[...].price()  # 获取所有价格，处�
 ## 📄 许可证
 
 MIT
-
