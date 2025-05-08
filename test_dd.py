@@ -1,3 +1,4 @@
+from functools import partial
 import unittest
 from src.dd import dd, DDException
 
@@ -257,7 +258,7 @@ class TestDataDot(unittest.TestCase):
         data = {
             "items": [
                 {"type": "user", "data": {"username": "alice"}},
-                {"type": "post", "data": None},
+                {"type": "post"},
                 {"type": "comment", "data": {"text": "Great post!"}},
             ]
         }
@@ -274,9 +275,11 @@ class TestDataDot(unittest.TestCase):
         username_or_text = (
             dd(data)
             .items[...]
-            ._.data(lambda d: d.get("username") if d and "username" in d else (d.get("text") if d else None))
+            ._.data(
+                partial(map, (lambda d: d.get("username") if d and "username" in d else (d.get("text") if d else None)))
+            )
         )
-        self.assertEqual(username_or_text, ["alice", None, "Great post!"])
+        self.assertEqual(list(username_or_text), ["alice", None, "Great post!"])
 
 
 if __name__ == "__main__":

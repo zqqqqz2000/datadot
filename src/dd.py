@@ -171,16 +171,13 @@ class dd:
         path = ["dd"]
 
         for op in self._operations:
-            # 如果当前值为None并且启用了null_safe，则直接返回None
             if result is None and self._null_safe:
-                return None
+                result = None
+                break
 
             try:
                 result = op.apply(result, path)
             except Exception as e:
-                # 如果启用了null_safe，则返回None而不是抛出异常
-                if self._null_safe:
-                    return None
                 if isinstance(e, DDException):
                     raise
                 raise DDException(f"Unexpected error: {str(e)}", path, result) from e
@@ -190,8 +187,6 @@ class dd:
             try:
                 return convert(result)
             except Exception as e:
-                if self._null_safe:
-                    return None
                 raise DDException(f"Conversion error: {str(e)}", path, result) from e
 
         return result
