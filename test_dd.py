@@ -218,6 +218,66 @@ class TestDataDot(unittest.TestCase):
 
         self.assertEqual(product_info, expected)
 
+    def test_map_operations_on_expanded_elements(self):
+        """测试对展开元素的映射操作"""
+        # 场景1：简单用户列表
+        data = {
+            "users": [
+                {"name": "Alice", "profile": {"age": 30, "city": "New York"}},
+                {"name": "Bob", "profile": {"age": 25, "city": "Chicago"}},
+                {"name": "Charlie", "profile": {"age": 35, "city": "San Francisco"}},
+            ]
+        }
+
+        # 使用[...]展开users列表，然后直接访问每个用户的name
+        names = dd(data).users[...].name()
+        self.assertEqual(names, ["Alice", "Bob", "Charlie"])
+
+        # 使用[...]展开users列表，然后访问每个用户的profile.city
+        cities = dd(data).users[...].profile.city()
+        self.assertEqual(cities, ["New York", "Chicago", "San Francisco"])
+
+        # 场景2：嵌套数据结构
+        data = {
+            "departments": [
+                {"name": "Engineering", "employees": [{"id": 1, "role": "Developer"}, {"id": 2, "role": "Designer"}]},
+                {"name": "Marketing", "employees": [{"id": 3, "role": "Manager"}, {"id": 4, "role": "Copywriter"}]},
+            ]
+        }
+
+        # 展开departments，然后获取每个部门的名称
+        dept_names = dd(data).departments[...].name()
+        self.assertEqual(dept_names, ["Engineering", "Marketing"])
+
+        # 展开departments，然后展开每个部门的employees，获取每个员工的role
+        roles = dd(data).departments[...].employees[...].role()
+        self.assertEqual(roles, [["Developer", "Designer"], ["Manager", "Copywriter"]])
+
+        # 场景3：混合类型和null值
+        data = {
+            "items": [
+                {"type": "user", "data": {"username": "alice"}},
+                {"type": "post", "data": None},
+                {"type": "comment", "data": {"text": "Great post!"}},
+            ]
+        }
+
+        # 使用null_safe处理可能为空的data字段
+        item_types = dd(data).items[...].type()
+        self.assertEqual(item_types, ["user", "post", "comment"])
+
+        # 安全地访问data字段
+        data_values = dd(data).items[...]._.data()
+        self.assertEqual(data_values, [{"username": "alice"}, None, {"text": "Great post!"}])
+
+        # 安全地尝试获取每个数据的第一个可用属性
+        username_or_text = (
+            dd(data)
+            .items[...]
+            ._.data(lambda d: d.get("username") if d and "username" in d else (d.get("text") if d else None))
+        )
+        self.assertEqual(username_or_text, ["alice", None, "Great post!"])
+
 
 if __name__ == "__main__":
     unittest.main()
