@@ -35,7 +35,7 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m unittest
+          uv run python -m unittest
 
   build-and-publish:
     name: Build and Publish to PyPI
