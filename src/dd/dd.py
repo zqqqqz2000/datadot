@@ -182,7 +182,7 @@ class dd:
         else:
             return dd(self._value, self._operations + [item_op], self._null_safe, [])
 
-    def __call__(self, convert: Optional[Callable[[Any], _R]] = None) -> Union[_R, Any]:
+    def __call__(self, convert: Optional[Callable[[Any], _R]] = None) -> _R:
         """Execute all operations and get the final result"""
         result: Any = self._value
         path: List[str] = ["dd"]
