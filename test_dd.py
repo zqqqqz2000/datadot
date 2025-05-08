@@ -1,6 +1,6 @@
 from functools import partial
 import unittest
-from src.dd import dd, DDException
+from dd import dd, DDException
 
 
 class TestDataDot(unittest.TestCase):
