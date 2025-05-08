@@ -10,7 +10,7 @@ class DDException(Exception):
         self.message = message
         self.path = path
         self.value = value
-        super().__init__(f"{message} at path: {'.'.join(path)}, from value: {repr(value)}")
+        super().__init__(f"{message} at full path: {'.'.join(path)}, from value: {repr(value)}")
 
 
 class _DDOperation:
