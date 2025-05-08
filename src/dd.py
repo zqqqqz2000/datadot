@@ -10,7 +10,7 @@ class DDException(Exception):
         self.message = message
         self.path = path
         self.value = value
-        super().__init__(f"{message} at path: {'.'.join(path)}, value: {repr(value)}")
+        super().__init__(f"{message} at path: {'.'.join(path)}, from value: {repr(value)}")
 
 
 class _DDOperation:
@@ -23,40 +23,58 @@ class _DDOperation:
 class _DDAttributeOperation(_DDOperation):
     """获取属性操作"""
 
-    def __init__(self, attr: str):
+    def __init__(self, attr: str, null_safe: bool):
         self.attr = attr
+        self.null_safe = null_safe
 
     def apply(self, value: Any, path: List[str]) -> Any:
-        current_path = path + [self.attr]
-        if value is None:
+        path.append(self.attr)
+        if value is None and self.null_safe:
             return None
         try:
             return value[self.attr]
+        except KeyError as e:
+            if self.null_safe:
+                return None
+            raise DDException(f"Failed to get attribute '{self.attr}': {str(e)}", path, value) from e
+        except IndexError as e:
+            if self.null_safe:
+                return None
+            raise DDException(f"Failed to get attribute '{self.attr}': {str(e)}", path, value) from e
         except Exception as e:
-            raise DDException(f"Failed to get attribute '{self.attr}': {str(e)}", current_path, value) from e
+            raise DDException(f"Failed to get attribute '{self.attr}': {str(e)}", path, value) from e
 
 
 class _DDItemOperation(_DDOperation):
     """获取索引/键操作"""
 
-    def __init__(self, key: Any):
+    def __init__(self, key: Any, null_safe: bool):
         self.key = key
+        self.null_safe = null_safe
 
     def apply(self, value: Any, path: List[str]) -> Any:
-        current_path = path + [f"[{repr(self.key)}]"]
-        if value is None:
+        path.append(f"[{repr(self.key)}]")
+        if value is None and self.null_safe:
             return None
         try:
             return value[self.key]
+        except KeyError as e:
+            if self.null_safe:
+                return None
+            raise DDException(f"Failed to get attribute '{self.key}': {str(e)}", path, value) from e
+        except IndexError as e:
+            if self.null_safe:
+                return None
+            raise DDException(f"Failed to get attribute '{self.key}': {str(e)}", path, value) from e
         except Exception as e:
-            raise DDException(f"Failed to get item with key '{self.key}': {str(e)}", current_path, value) from e
+            raise DDException(f"Failed to get item with key '{self.key}': {str(e)}", path, value) from e
 
 
 class _DDExpandOperation(_DDOperation):
     """展开操作 [...]"""
 
     def apply(self, value: Any, path: List[str]) -> List[Any]:
-        current_path = path + ["[...]"]
+        path.append("[...]")
         if value is None:
             return []
         try:
@@ -65,11 +83,11 @@ class _DDExpandOperation(_DDOperation):
             elif hasattr(value, "__iter__") and not isinstance(value, (str, bytes)):
                 return list(value)
             else:
-                raise DDException("Cannot expand non-iterable", current_path, value)
+                raise DDException("Cannot expand non-iterable", path, value)
         except Exception as e:
             if isinstance(e, DDException):
                 raise
-            raise DDException(f"Failed to expand: {str(e)}", current_path, value) from e
+            raise DDException(f"Failed to expand: {str(e)}", path, value) from e
 
 
 class _DDMapOperation(_DDOperation):
@@ -85,35 +103,28 @@ class _DDMapOperation(_DDOperation):
 
         # 如果不是列表，将其视为单元素列表处理
         if not isinstance(value, list):
-            try:
-                result = self.operation.apply(value, path)
-                return [result]
-            except DDException as e:
-                return [None]
+            result = self.operation.apply(value, path)
+            return [result]
 
         result = []
         for i, item in enumerate(value):
             item_path = path + [f"[{i}]"]
-            try:
-                # 如果操作本身是另一个_DDMapOperation，需要考虑展开级别
-                if isinstance(self.operation, _DDMapOperation):
-                    # 如果当前项是列表，且展开级别 > 1，需要递归应用映射
-                    if isinstance(item, list) and self.expansion_level > 1:
-                        inner_results = []
-                        for j, inner_item in enumerate(item):
-                            inner_path = item_path + [f"[{j}]"]
-                            operation_copy = self.operation.operation  # 获取内部操作
-                            # 创建一个展开级别减1的新映射操作
-                            new_op = _DDMapOperation(operation_copy, self.expansion_level - 1)
-                            inner_results.append(new_op.apply(inner_item, inner_path))
-                        result.append(inner_results)
-                    else:
-                        result.append(self.operation.apply(item, item_path))
+            # 如果操作本身是另一个_DDMapOperation，需要考虑展开级别
+            if isinstance(self.operation, _DDMapOperation):
+                # 如果当前项是列表，且展开级别 > 1，需要递归应用映射
+                if isinstance(item, list) and self.expansion_level > 1:
+                    inner_results = []
+                    for j, inner_item in enumerate(item):
+                        inner_path = item_path + [f"[{j}]"]
+                        operation_copy = self.operation.operation  # 获取内部操作
+                        # 创建一个展开级别减1的新映射操作
+                        new_op = _DDMapOperation(operation_copy, self.expansion_level - 1)
+                        inner_results.append(new_op.apply(inner_item, inner_path))
+                    result.append(inner_results)
                 else:
                     result.append(self.operation.apply(item, item_path))
-            except DDException as e:
-                # 如果某个元素操作失败，将None添加到结果中
-                result.append(None)
+            else:
+                result.append(self.operation.apply(item, item_path))
 
         return result
 
@@ -121,7 +132,13 @@ class _DDMapOperation(_DDOperation):
 class dd:
     """数据访问主类，用于初始化一个数据导航操作"""
 
-    def __init__(self, value: Any, operations=None, null_safe=False, expansion_levels=None):
+    def __init__(
+        self,
+        value: Any,
+        operations: Optional[List[_DDOperation]] = None,
+        null_safe: bool = False,
+        expansion_levels: Optional[List[int]] = None,
+    ):
         self._value = value
         self._operations: list[_DDOperation] = operations or []
         self._null_safe = null_safe
@@ -133,7 +150,7 @@ class dd:
             return dd(self._value, self._operations, True, self._expansion_levels)
 
         # 创建一个新的属性操作
-        attr_op = _DDAttributeOperation(attr)
+        attr_op = _DDAttributeOperation(attr, self._null_safe)
 
         # 如果存在展开层级，则需要使用_DDMapOperation包装操作
         if self._expansion_levels:
@@ -153,7 +170,7 @@ class dd:
             return dd(self._value, self._operations + [_DDExpandOperation()], self._null_safe, new_levels)
 
         # 创建一个新的索引操作
-        item_op = _DDItemOperation(key)
+        item_op = _DDItemOperation(key, self._null_safe)
 
         # 如果存在展开层级，则需要使用_DDMapOperation包装操作
         if self._expansion_levels:
