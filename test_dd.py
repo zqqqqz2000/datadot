@@ -23,17 +23,17 @@ class TestDataDot(unittest.TestCase):
         self.assertIsNone(dd(data)._.users[1].name())
 
     def test_null_safety_propagation(self):
-        """测试 ._ 的传递性"""
+        """Test the transitivity of ._"""
         data = {"a": {"b": {"c": 1}}, "x": {"y": None}, "n": None}
 
-        # 没有 ._ 会抛出异常
+        # Without ._ will raise an exception
         with self.assertRaises(DDException):
             dd(data).n.anything()
 
-        # 使用 ._ 后所有后续访问都安全
+        # Using ._ makes all subsequent accesses safe
         self.assertIsNone(dd(data)._.n.anything.something.other())
         self.assertIsNone(dd(data)._.x.y.z.not_exist())
-        self.assertEqual(dd(data)._.a.b.c(), 1)  # 有效路径仍然正常工作
+        self.assertEqual(dd(data)._.a.b.c(), 1)  # Valid paths still work normally
 
     def test_expansion(self):
         data = {"users": [{"name": "Alice"}, {"name": "Bob"}, {"name": "Charlie"}]}
@@ -56,7 +56,7 @@ class TestDataDot(unittest.TestCase):
         # Get all ages, handling nulls
         self.assertEqual(
             dd(data).groups[...]._.users[...].age(), [[], [30, 15]]
-        )  # ._ 传递性使得后面的操作都是null-safe的
+        )  # The transitivity of ._ makes subsequent operations null-safe
 
         # Get only adult names
         adults = (
@@ -76,22 +76,22 @@ class TestDataDot(unittest.TestCase):
         self.assertEqual(total, 60)
 
     def test_expanded_array_shape_preservation(self):
-        """测试在多维数组上使用[...]时保持数组的形状"""
+        """Test preserving array shape when using [...] on multidimensional arrays"""
         data = {"matrix": [[1, 2, 3], [4, 5, 6], [7, 8, 9]]}
-        # 获取每一行的数据
+        # Get each row's data
         rows = dd(data).matrix[...]()
         self.assertEqual(rows, [[1, 2, 3], [4, 5, 6], [7, 8, 9]])
 
-        # 获取每一行的第一个元素
+        # Get the first element of each row
         first_columns = dd(data).matrix[...][0]()
         self.assertEqual(first_columns, [1, 4, 7])
 
-        # 操作每一行，对每行求和
+        # Operate on each row, sum each row
         row_sums = dd(data).matrix[...](lambda rows: [sum(row) for row in rows])
         self.assertEqual(row_sums, [6, 15, 24])
 
     def test_nested_expansion(self):
-        """测试嵌套的[...]操作"""
+        """Test nested [...] operations"""
         data = {
             "departments": [
                 {
@@ -111,11 +111,11 @@ class TestDataDot(unittest.TestCase):
             ]
         }
 
-        # 获取所有部门中所有团队中所有成员的名字
+        # Get the names of all members in all teams in all departments
         all_member_names = dd(data).departments[...].teams[...].members[...].name()
         self.assertEqual(all_member_names, [[["Alice", "Bob"], ["Charlie", "Dave"]], [["Eve", "Frank"], ["Grace"]]])
 
-        # 使用转换函数扁平化结果
+        # Use transform function to flatten the result
         flat_names = (
             dd(data)
             .departments[...]
@@ -126,7 +126,7 @@ class TestDataDot(unittest.TestCase):
         self.assertEqual(flat_names, ["Alice", "Bob", "Charlie", "Dave", "Eve", "Frank", "Grace"])
 
     def test_dict_expansion_shape(self):
-        """测试字典展开并保持键值对关系"""
+        """Test dictionary expansion while maintaining key-value relationships"""
         data = {
             "settings": {
                 "display": {"theme": "dark", "font": "Arial"},
@@ -134,7 +134,7 @@ class TestDataDot(unittest.TestCase):
             }
         }
 
-        # 自定义函数保持键值对
+        # Custom function to maintain key-value pairs
         settings_with_keys = dd(data).settings[...](
             lambda values: [{k: v} for k, v in zip(dd(data).settings().keys(), values)]
         )
@@ -143,7 +143,7 @@ class TestDataDot(unittest.TestCase):
             [{"display": {"theme": "dark", "font": "Arial"}}, {"privacy": {"cookies": "accept", "tracking": "deny"}}],
         )
 
-        # 获取所有嵌套设置的键值对
+        # Get all nested settings key-value pairs
         all_settings = dd(data).settings[...][...](
             lambda values: [{k: v} for section in values for k, v in section.items()]
         )
@@ -152,7 +152,7 @@ class TestDataDot(unittest.TestCase):
         )
 
     def test_mixed_data_types(self):
-        """测试混合数据类型的处理"""
+        """Test processing of mixed data types"""
         data = {
             "mixed": [
                 {"type": "user", "value": {"name": "Alice", "age": 30}},
@@ -161,11 +161,11 @@ class TestDataDot(unittest.TestCase):
             ]
         }
 
-        # 获取每种类型的值
+        # Get the value of each type
         values = dd(data).mixed[...].value()
         self.assertEqual(values, [{"name": "Alice", "age": 30}, ["debug", "verbose"], {"views": 100, "likes": 50}])
 
-        # 基于类型分组处理
+        # Process by type grouping
         processed = dd(data).mixed[...](lambda items: {item["type"]: item["value"] for item in items})
         self.assertEqual(
             processed,
@@ -177,7 +177,7 @@ class TestDataDot(unittest.TestCase):
         )
 
     def test_custom_shape_transformations(self):
-        """测试自定义形状转换"""
+        """Test custom shape transformations"""
         data = {
             "products": [
                 {
@@ -193,7 +193,7 @@ class TestDataDot(unittest.TestCase):
             ]
         }
 
-        # 提取产品信息与变体信息，保持结构化关系
+        # Extract product info and variant info, maintaining structured relationships
         product_info = dd(data).products[...](
             lambda products: [
                 {
@@ -220,8 +220,8 @@ class TestDataDot(unittest.TestCase):
         self.assertEqual(product_info, expected)
 
     def test_map_operations_on_expanded_elements(self):
-        """测试对展开元素的映射操作"""
-        # 场景1：简单用户列表
+        """Test mapping operations on expanded elements"""
+        # Scenario 1: Simple user list
         data = {
             "users": [
                 {"name": "Alice", "profile": {"age": 30, "city": "New York"}},
@@ -230,15 +230,15 @@ class TestDataDot(unittest.TestCase):
             ]
         }
 
-        # 使用[...]展开users列表，然后直接访问每个用户的name
+        # Use [...] to expand the users list, then directly access each user's name
         names = dd(data).users[...].name()
         self.assertEqual(names, ["Alice", "Bob", "Charlie"])
 
-        # 使用[...]展开users列表，然后访问每个用户的profile.city
+        # Use [...] to expand the users list, then access each user's profile.city
         cities = dd(data).users[...].profile.city()
         self.assertEqual(cities, ["New York", "Chicago", "San Francisco"])
 
-        # 场景2：嵌套数据结构
+        # Scenario 2: Nested data structure
         data = {
             "departments": [
                 {"name": "Engineering", "employees": [{"id": 1, "role": "Developer"}, {"id": 2, "role": "Designer"}]},
@@ -246,15 +246,15 @@ class TestDataDot(unittest.TestCase):
             ]
         }
 
-        # 展开departments，然后获取每个部门的名称
+        # Expand departments, then get each department's name
         dept_names = dd(data).departments[...].name()
         self.assertEqual(dept_names, ["Engineering", "Marketing"])
 
-        # 展开departments，然后展开每个部门的employees，获取每个员工的role
+        # Expand departments, then expand each department's employees, and get each employee's role
         roles = dd(data).departments[...].employees[...].role()
         self.assertEqual(roles, [["Developer", "Designer"], ["Manager", "Copywriter"]])
 
-        # 场景3：混合类型和null值
+        # Scenario 3: Mixed types and null values
         data = {
             "items": [
                 {"type": "user", "data": {"username": "alice"}},
@@ -263,15 +263,15 @@ class TestDataDot(unittest.TestCase):
             ]
         }
 
-        # 使用null_safe处理可能为空的data字段
+        # Use null_safe to handle potentially empty data fields
         item_types = dd(data).items[...].type()
         self.assertEqual(item_types, ["user", "post", "comment"])
 
-        # 安全地访问data字段
+        # Safely access the data field
         data_values = dd(data).items[...]._.data()
         self.assertEqual(data_values, [{"username": "alice"}, None, {"text": "Great post!"}])
 
-        # 安全地尝试获取每个数据的第一个可用属性
+        # Safely try to get the first available attribute for each data
         username_or_text = (
             dd(data)
             .items[...]
@@ -282,42 +282,42 @@ class TestDataDot(unittest.TestCase):
         self.assertEqual(list(username_or_text), ["alice", None, "Great post!"])
 
     def test_nested_circular_references(self):
-        """测试嵌套的循环引用数据结构"""
-        # 创建一个包含循环引用的数据结构
+        """Test nested circular reference data structures"""
+        # Create a data structure with circular references
         data = {"name": "root"}
-        # 使用引用而不是直接赋值，避免类型错误
+        # Use references instead of direct assignment to avoid type errors
         data["self"] = data
         data["children"] = [
             {"name": "child1", "parent": {"name": "root"}},
             {"name": "child2", "parent": {"name": "root"}},
         ]
 
-        # 访问不应导致无限递归
+        # Access should not lead to infinite recursion
         self.assertEqual(dd(data).name(), "root")
         self.assertEqual(dd(data).self.name(), "root")
         self.assertEqual(dd(data).children[0].name(), "child1")
         self.assertEqual(dd(data).children[0].parent.name(), "root")
         self.assertEqual(dd(data).children[1].parent.name(), "root")
 
-        # 测试展开操作在循环引用情况下的表现
+        # Test expansion operations with circular references
         children_names = dd(data).children[...].name()
         self.assertEqual(children_names, ["child1", "child2"])
 
     def test_large_nested_data(self):
-        """测试处理大型嵌套数据结构的能力"""
-        # 创建一个深度嵌套的大型数据结构
+        """Test the ability to handle large nested data structures"""
+        # Create a deeply nested large data structure
         data = {"level": 0}
         current = data
 
-        # 创建深度为20的嵌套结构
+        # Create a nested structure with depth of 20
         for i in range(1, 21):
             current["next"] = {"level": i}
             current = current["next"]
 
-        # 测试能否正确访问深层数据
+        # Test the ability to correctly access deep data
         self.assertEqual(dd(data).next.next.next.next.next.level(), 5)
 
-        # 测试一个很长的访问链
+        # Test a very long access chain
         self.assertEqual(
             dd(
                 data
@@ -325,21 +325,21 @@ class TestDataDot(unittest.TestCase):
             20,
         )
 
-        # 测试长访问链中间某一点的null safety
+        # Test null safety at some point in a long access chain
         current = data
         for i in range(10):
             current = current["next"]
         current["next"] = None
 
-        # 检查正常访问是否会抛出异常
+        # Check if normal access would throw an exception
         with self.assertRaises(DDException):
             dd(data).next.next.next.next.next.next.next.next.next.next.next.level()
 
-        # 使用 ._ 后应该返回 None
+        # Using ._ should return None
         self.assertIsNone(dd(data)._.next.next.next.next.next.next.next.next.next.next.next.level())
 
     def test_heterogeneous_data_expansion(self):
-        """测试处理不同类型数据的展开能力"""
+        """Test the ability to expand different types of data"""
         data = {
             "mixed_list": [
                 123,
@@ -360,13 +360,13 @@ class TestDataDot(unittest.TestCase):
             },
         }
 
-        # 展开混合列表
+        # Expand mixed list
         expanded = dd(data).mixed_list[...]()
         self.assertEqual(len(expanded), 7)
         self.assertEqual(expanded[0], 123)
         self.assertEqual(expanded[2], {"key": "value"})
 
-        # 对不规则数据进行深层展开和转换
+        # Perform deep expansion and transformation on irregular data
         complex_result = dd(data).mixed_list[...](
             lambda items: [
                 type(item).__name__ if not isinstance(item, dict) else [k for k in item.keys()] for item in items
@@ -374,17 +374,17 @@ class TestDataDot(unittest.TestCase):
         )
         self.assertEqual(complex_result, ["int", "str", ["key"], "list", "NoneType", "bool", ["items"]])
 
-        # 展开字典
+        # Expand dictionary
         dict_values = dd(data).dict_with_different_types[...]()
         self.assertEqual(len(dict_values), 6)
 
-        # 确保展开的值与原始值匹配
+        # Ensure expanded values match original values
         dict_keys = list(data["dict_with_different_types"].keys())
         for i, key in enumerate(dict_keys):
             self.assertEqual(dd(data).dict_with_different_types[key](), data["dict_with_different_types"][key])
 
     def test_error_recovery_and_path_reporting(self):
-        """测试错误恢复和路径报告功能"""
+        """Test error recovery and path reporting functionality"""
         data = {
             "users": [
                 {"id": 1, "name": "Alice", "metadata": {"tags": ["admin", "active"]}},
@@ -392,23 +392,23 @@ class TestDataDot(unittest.TestCase):
             ]
         }
 
-        # 测试详细的错误路径报告
+        # Test detailed error path reporting
         with self.assertRaises(DDException) as context:
-            dd(data).users[2].name()  # 访问不存在的索引
+            dd(data).users[2].name()  # Access non-existent index
 
         error_message = str(context.exception)
         self.assertIn("Failed to get attribute", error_message)
         self.assertIn("dd.users.[2]", error_message)
 
-        # 测试嵌套属性的错误路径
+        # Test error path for nested attributes
         with self.assertRaises(DDException) as context:
             dd(data).users[1].metadata.tags[0]()
 
         error_message = str(context.exception)
         self.assertIn("dd.users.[1].metadata.tags", error_message)
 
-        # 测试空值安全后的路径继续报告
-        # 即使有._ 也应该在错误信息中保留完整路径
+        # Test continued path reporting after null safety
+        # Even with ._ should preserve complete path in error message
         with self.assertRaises(DDException) as context:
             dd(data)._.non_existent.another.something(lambda _: 1 / 0)
 
@@ -416,7 +416,7 @@ class TestDataDot(unittest.TestCase):
         self.assertIn("dd.non_existent", error_message)
 
     def test_function_composition(self):
-        """测试函数组合和链式处理"""
+        """Test function composition and chained processing"""
         data = {
             "products": [
                 {"id": "p1", "price": 100, "stock": 5},
@@ -425,31 +425,31 @@ class TestDataDot(unittest.TestCase):
             ]
         }
 
-        # 测试组合多个转换函数
+        # Test combining multiple transformation functions
         def filter_in_stock(products):
             return dd([p for p in products if p["stock"] > 0])
 
         def calculate_value(products):
             return sum(p["price"] * p["stock"] for p in products)
 
-        # 链式应用转换
+        # Chain-apply transformations
         in_stock_products = dd(data).products[...](filter_in_stock)()
         self.assertEqual(len(in_stock_products), 2)
         self.assertEqual(in_stock_products[0]["id"], "p1")
         self.assertEqual(in_stock_products[1]["id"], "p3")
 
-        # 计算库存总价值
+        # Calculate total inventory value
         total_value = dd(data).products[...](filter_in_stock)(calculate_value)
         self.assertEqual(total_value, 100 * 5 + 150 * 10)
 
-        # 测试对转换后结果的进一步处理
+        # Test further processing of transformed results
         formatted_result = dd(data).products[...](filter_in_stock)(
             lambda products: {p["id"]: f"${p['price'] * p['stock']}" for p in products}
         )
         self.assertEqual(formatted_result, {"p1": "$500", "p3": "$1500"})
 
     def test_conditional_data_access(self):
-        """测试条件数据访问"""
+        """Test conditional data access"""
         data = {
             "settings": {
                 "features": {
@@ -460,14 +460,14 @@ class TestDataDot(unittest.TestCase):
             }
         }
 
-        # 测试条件访问：获取所有已启用的功能的配置
+        # Test conditional access: get configs of all enabled features
         def get_enabled_configs(features):
             return {name: feature["config"] for name, feature in features.items() if feature["enabled"]}
 
         enabled_configs = dd(data).settings.features(get_enabled_configs)
         self.assertEqual(enabled_configs, {"feature1": {"timeout": 30}, "feature3": None})
 
-        # 测试条件展开：只展开启用的功能
+        # Test conditional expansion: only expand enabled features
         def expand_enabled_features(features):
             return [
                 {"name": name, "config": feature["config"]} for name, feature in features.items() if feature["enabled"]
@@ -478,14 +478,14 @@ class TestDataDot(unittest.TestCase):
             enabled_features, [{"name": "feature1", "config": {"timeout": 30}}, {"name": "feature3", "config": None}]
         )
 
-        # 测试空值安全与条件访问组合
+        # Test combining null safety with conditional access
         timeout_values = (
             dd(data).settings.features[...]._.config._.timeout(lambda timeouts: [t for t in timeouts if t is not None])
         )
         self.assertEqual(timeout_values, [30, 60])
 
     def test_dynamic_key_access(self):
-        """测试动态键访问和路径构建"""
+        """Test dynamic key access and path building"""
         data = {
             "database": {
                 "tables": {
@@ -495,7 +495,7 @@ class TestDataDot(unittest.TestCase):
             }
         }
 
-        # 动态构建访问路径
+        # Dynamically build access paths
         tables = ["users", "posts"]
 
         all_items = []
@@ -505,7 +505,7 @@ class TestDataDot(unittest.TestCase):
 
         self.assertEqual(len(all_items), 4)
 
-        # 测试构建更复杂的动态访问路径
+        # Test building more complex dynamic access paths
         def access_by_path(data, path_parts):
             result = dd(data)
             for part in path_parts:
@@ -517,7 +517,7 @@ class TestDataDot(unittest.TestCase):
                     result = getattr(result, part)
             return result()
 
-        # 动态构建不同的访问路径
+        # Dynamically build different access paths
         user_names = access_by_path(data, ["database", "tables", "users", "...", "name"])
         self.assertEqual(user_names, ["Alice", "Bob"])
 
@@ -525,10 +525,10 @@ class TestDataDot(unittest.TestCase):
         self.assertEqual(post_titles, ["Hello", "World"])
 
     def test_performance_with_complex_operations(self):
-        """测试在复杂操作下的性能表现"""
+        """Test performance with complex operations"""
         import time
 
-        # 创建一个大型数据结构
+        # Create a large data structure
         data = {
             "records": [
                 {
@@ -544,23 +544,23 @@ class TestDataDot(unittest.TestCase):
             ]
         }
 
-        # 测试多重展开和过滤操作的性能
+        # Test performance of multiple expansions and filtering operations
         start_time = time.time()
 
-        # 复杂操作：获取所有偶数ID记录的第一个标签
+        # Complex operation: get the first tag of all records with even IDs
         result = dd(data).records[...](lambda records: [r["metadata"]["tags"][0] for r in records if r["id"] % 2 == 0])
 
         end_time = time.time()
         elapsed = end_time - start_time
 
-        # 验证结果正确性
-        self.assertEqual(len(result), 50)  # 50个偶数ID
+        # Verify result correctness
+        self.assertEqual(len(result), 50)  # 50 even IDs
         self.assertEqual(result[0], "tag0")
 
-        # 性能检查仅作为参考，不严格断言时间
+        # Performance check only as reference, not strict time assertion
         print(f"Complex operation completed in {elapsed:.6f} seconds")
 
-        # 更复杂的操作：获取每个记录的平均值和标签数量
+        # More complex operation: get average value and tag count for each record
         start_time = time.time()
 
         result = dd(data).records[...](
@@ -577,26 +577,26 @@ class TestDataDot(unittest.TestCase):
         end_time = time.time()
         elapsed = end_time - start_time
 
-        # 验证结果
+        # Verify results
         self.assertEqual(len(result), 100)
-        self.assertEqual(result[0]["avg_value"], 49.5)  # 0-99的平均值
+        self.assertEqual(result[0]["avg_value"], 49.5)  # Average of 0-99
         self.assertEqual(result[0]["tag_count"], 20)
 
         print(f"More complex operation completed in {elapsed:.6f} seconds")
 
     def test_edge_cases(self):
-        """测试各种边缘情况"""
-        # 空数据
+        """Test various edge cases"""
+        # Empty data
         self.assertEqual(dd({})._(lambda x: "empty"), "empty")
         self.assertIsNone(dd(None)._())
 
-        # 极端值
+        # Extreme values
         data = {"min": float("-inf"), "max": float("inf"), "nan": float("nan")}
         self.assertEqual(dd(data).min(), float("-inf"))
         self.assertEqual(dd(data).max(), float("inf"))
         self.assertTrue(isinstance(dd(data).nan(), float))
 
-        # 特殊字符键
+        # Special character keys
         data = {
             "!@#$%^&*()": "special chars",
             "   ": "spaces",
@@ -613,7 +613,7 @@ class TestDataDot(unittest.TestCase):
         self.assertEqual(dd(data)[True](), "boolean key")
         self.assertEqual(dd(data)[(1, 2)](), "tuple key")
 
-        # Unicode和国际化字符
+        # Unicode and internationalization characters
         data = {"中文": "Chinese", "русский": "Russian", "日本語": "Japanese", "العربية": "Arabic", "😀": "Emoji"}
 
         self.assertEqual(dd(data)["中文"](), "Chinese")
@@ -623,8 +623,8 @@ class TestDataDot(unittest.TestCase):
         self.assertEqual(dd(data)["😀"](), "Emoji")
 
     def test_highly_nested_expansions(self):
-        """测试高度嵌套的展开操作"""
-        # 创建一个深度嵌套的数据结构
+        """Test highly nested expansion operations"""
+        # Create a deeply nested data structure
         data = {
             "level1": [
                 {
@@ -638,30 +638,30 @@ class TestDataDot(unittest.TestCase):
                     "name": "B",
                     "level2": [
                         {"name": "B1", "level3": [{"name": "B1a", "value": 5}, {"name": "B1b", "value": 6}]},
-                        {"name": "B2", "level3": None},  # 故意放置一个None
+                        {"name": "B2", "level3": None},  # Deliberately place a None
                     ],
                 },
             ]
         }
 
-        # 测试高度嵌套展开 - 获取所有最深层的名称
+        # Test highly nested expansion - get all names from the deepest layer
         deepest_names = dd(data).level1[...].level2[...]._.level3[...]._.name()
         expected = [[["A1a", "A1b"], ["A2a", "A2b"]], [["B1a", "B1b"], []]]
         self.assertEqual(deepest_names, expected)
 
-        # 获取所有值并计算总和
+        # Get all values and calculate sum
         all_values = dd(data).level1[...].level2[...]._.level3[...]._.value()
-        # 扁平化并过滤None
+        # Flatten and filter None
         flat_values = [v for sublist1 in all_values for sublist2 in sublist1 for v in (sublist2 or [])]
         self.assertEqual(sum(flat_values), 21)  # 1+2+3+4+5+6=21
 
-        # 测试在多级展开中应用转换
+        # Test applying transformations in multi-level expansions
         transformed = dd(data).level1[...].level2[...]._.level3[...].name()
 
         expected = [[["A1a", "A1b"], ["A2a", "A2b"]], [["B1a", "B1b"], []]]
         self.assertEqual(transformed, expected)
 
-        # 测试展开后扁平化结果
+        # Test flattening results after expansion
         def flatten_nested_list(nested_list):
             result = []
 
