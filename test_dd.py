@@ -48,7 +48,7 @@ class TestDataDot(unittest.TestCase):
             dd(data).users[0].email()
 
         self.assertIn("Failed to get attribute 'email'", str(context.exception))
-        self.assertIn("dd.users[0].email", str(context.exception))
+        self.assertIn("dd.users.[0].email", str(context.exception))
 
     def test_complex_operations(self):
         data = {"groups": [{"users": None}, {"users": [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 15}]}]}
