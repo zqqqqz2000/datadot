@@ -64,8 +64,7 @@ jobs:
 
       - name: Check package
         run: |
-          uv pip install twine
-          uv run twine check dist/*
+          uvx twine check dist/*
 
       - name: Publish to PyPI
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release' || github.event_name == 'workflow_dispatch'
