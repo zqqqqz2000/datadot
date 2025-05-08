@@ -8,11 +8,11 @@ DataDot (DD) is a Python library designed to simplify data access. It provides a
 
 ## Key Features
 
-- Chain-style API
-- Safe attribute and index access
-- Null-safe handling (using `._` modifier)
-- Data structure expansion operations
-- Friendly error messages
+- 🔗 Chain-style API
+- 🛡️ Safe attribute and index access
+- 🔒 Null-safe handling (using `._` modifier)
+- 🔄 Data structure expansion operations
+- 📝 Friendly error messages
 
 ## Examples
 
@@ -25,18 +25,18 @@ data = {
     ]
 }
 
-# Using DD to access data
+# Using DD to access data ✨
 from dd import dd
 
-# Get the email of the first user
+# Get the email of the first user 📧
 email = dd(data).users[0].details.email()
 print(email)  # Output: zhangsan@example.com
 
-# Null-safe handling
+# Null-safe handling 🛡️
 missing = dd(data)._.users[3].details.email()
 print(missing)  # Output: None instead of raising an exception
 
-# Expansion operation to get all user names
+# Expansion operation to get all user names 👥
 names = dd(data).users[...].name()
 print(names)  # Output: ['Zhang San', 'Li Si']
 ```

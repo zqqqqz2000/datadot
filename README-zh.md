@@ -8,11 +8,11 @@ DataDot (DD) 是一个用于简化数据访问的Python库。它提供了一种�
 
 ## 主要特性
 
-- 链式调用API
-- 安全的属性和索引访问
-- 空值安全处理 (使用 `._` 启用)
-- 数据结构展开操作
-- 友好的错误提示
+- 🔗 链式调用API
+- 🛡️ 安全的属性和索引访问
+- 🔒 空值安全处理 (使用 `._` 启用)
+- 🔄 数据结构展开操作
+- 📝 友好的错误提示
 
 ## 示例
 
@@ -25,18 +25,18 @@ data = {
     ]
 }
 
-# 使用DD访问数据
+# 使用DD访问数据 ✨
 from dd import dd
 
-# 获取第一个用户的邮箱
+# 获取第一个用户的邮箱 📧
 email = dd(data).users[0].details.email()
 print(email)  # 输出: zhangsan@example.com
 
-# 空值安全处理
+# 空值安全处理 🛡️
 missing = dd(data)._.users[3].details.email()
 print(missing)  # 输出: None 而不是抛出异常
 
-# 展开操作获取所有用户名
+# 展开操作获取所有用户名 👥
 names = dd(data).users[...].name()
 print(names)  # 输出: ['张三', '李四']
 ```
