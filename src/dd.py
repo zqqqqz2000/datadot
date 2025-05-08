@@ -31,9 +31,9 @@ class _DDAttributeOperation(_DDOperation):
         if value is None:
             return None
         try:
-            return getattr(value, self.attr)
+            return value[self.attr]
         except Exception as e:
-            raise DDException(f"Failed to get attribute '{self.attr}': {str(e)}", current_path, value)
+            raise DDException(f"Failed to get attribute '{self.attr}': {str(e)}", current_path, value) from e
 
 
 class _DDItemOperation(_DDOperation):
@@ -49,7 +49,7 @@ class _DDItemOperation(_DDOperation):
         try:
             return value[self.key]
         except Exception as e:
-            raise DDException(f"Failed to get item with key '{self.key}': {str(e)}", current_path, value)
+            raise DDException(f"Failed to get item with key '{self.key}': {str(e)}", current_path, value) from e
 
 
 class _DDExpandOperation(_DDOperation):
@@ -69,7 +69,7 @@ class _DDExpandOperation(_DDOperation):
         except Exception as e:
             if isinstance(e, DDException):
                 raise
-            raise DDException(f"Failed to expand: {str(e)}", current_path, value)
+            raise DDException(f"Failed to expand: {str(e)}", current_path, value) from e
 
 
 class dd:
@@ -77,7 +77,7 @@ class dd:
 
     def __init__(self, value: Any, operations=None, null_safe=False):
         self._value = value
-        self._operations = operations or []
+        self._operations: list[_DDOperation] = operations or []
         self._null_safe = null_safe
 
     def __getattr__(self, attr: str):
@@ -112,7 +112,7 @@ class dd:
                     return None
                 if isinstance(e, DDException):
                     raise
-                raise DDException(f"Unexpected error: {str(e)}", path, result)
+                raise DDException(f"Unexpected error: {str(e)}", path, result) from e
 
         # 即使convert为None也应该到达这里，保持所有操作的应用
         if convert is not None:
@@ -121,6 +121,6 @@ class dd:
             except Exception as e:
                 if self._null_safe:
                     return None
-                raise DDException(f"Conversion error: {str(e)}", path, result)
+                raise DDException(f"Conversion error: {str(e)}", path, result) from e
 
         return result

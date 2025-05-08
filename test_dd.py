@@ -199,7 +199,7 @@ class TestDataDot(unittest.TestCase):
                     "product": {"id": p["id"], "name": p["name"]},
                     "variants": dd(p).variants[...](
                         lambda vars: [{"color": v["color"], "price": v["price"]} for v in vars]
-                    )(),
+                    ),
                 }
                 for p in products
             ]
@@ -221,4 +221,3 @@ class TestDataDot(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
